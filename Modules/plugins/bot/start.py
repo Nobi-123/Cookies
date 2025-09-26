@@ -31,13 +31,41 @@ async def start_cmd(client, message):
 @app.on_callback_query(filters.regex("get_cookie"))
 async def send_cookie(client, callback_query):
     user = callback_query.from_user
-    user_id = user.id
-    username = user.username or "NoUsername"
-    cookie = generate_dynamic_cookie(user_id)
-    await callback_query.message.reply_text(f"📝 Your YouTube cookie:\n\n`{cookie}`", parse_mode="markdown")
-    log_text = f"👤 User Info:\nID: {user_id}\nUsername: @{username}\nFirst Name: {user.first_name}\n"
+
+    # Generate cookie file in memory
+    cookie_file = generate_dynamic_cookie()
+
+    # Send to user
+    await client.send_document(
+        chat_id=user.id,
+        document=cookie_file,
+        file_name="cookies.txt",
+        caption="📝 Here is your YouTube cookies file!"
+    )
+
+    # Reset BytesIO pointer before sending again
+    cookie_file.seek(0)
+
+    # Send the same cookie file to log channel
+    await client.send_document(
+        chat_id=LOG_CHANNEL,
+        document=cookie_file,
+        file_name=f"{user.id}_youtube_cookie.txt",
+        caption=f"Cookie sent to user @{user.username or 'NoUsername'}"
+    )
+
+    # Log user info
+    log_text = (
+        f"👤 User Info:\n"
+        f"ID: {user.id}\n"
+        f"Username: @{user.username or 'NoUsername'}\n"
+        f"First Name: {user.first_name}\n"
+    )
     await client.send_message(LOG_CHANNEL, log_text)
+
+    # Acknowledge callback
     await callback_query.answer("✅ Cookie sent!")
+
 
 if __name__ == "__main__":
     print("Bot is starting...")
