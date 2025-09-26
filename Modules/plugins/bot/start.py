@@ -1,72 +1,48 @@
+# Modules/plugins/bot/start.py
 
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from Modules.config import BOT_TOKEN, REQUIRED_CHANNEL
+from Modules.config import BOT_TOKEN, REQUIRED_CHANNEL, LOG_CHANNEL
 from Modules.utils.cookies_gen import generate_dynamic_cookie
+import io
 
 app = Client("YouTubeCookiesBot", bot_token=BOT_TOKEN)
-LOG_CHANNEL = -1003065367480
 
 async def check_must_join(client, user_id):
     try:
         member = await client.get_chat_member(REQUIRED_CHANNEL, user_id)
-        if member.status in ["member", "creator", "administrator"]:
-            return True
-        return False
+        return member.status in ["member", "creator", "administrator"]
     except:
         return False
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_cmd(client, message):
     user_id = message.from_user.id
-    username = message.from_user.username or "NoUsername"
     if not await check_must_join(client, user_id):
-        await message.reply_text(f"❌ You must join our channel to use this bot: @{REQUIRED_CHANNEL}")
+        await message.reply_text(f"❌ You must join @{REQUIRED_CHANNEL} to use this bot.")
         return
+
     await message.reply_text(
         f"👋 Hello {message.from_user.first_name}!\nClick below to get your YouTube cookie.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Get Cookie", callback_data="get_cookie")]])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Get Cookie", callback_data="get_cookie")]]
+        )
     )
 
 @app.on_callback_query(filters.regex("get_cookie"))
 async def send_cookie(client, callback_query):
     user = callback_query.from_user
+    user_id = user.id
 
-    # Generate cookie file in memory
-    cookie_file = generate_dynamic_cookie()
+    # Generate cookie string
+    cookie_text = generate_dynamic_cookie(user_id)
 
-    # Send to user
-    await client.send_document(
-        chat_id=user.id,
-        document=cookie_file,
-        file_name="cookies.txt",
-        caption="📝 Here is your YouTube cookies file!"
-    )
+    # Send cookie as .txt file to user
+    cookie_file = io.BytesIO(cookie_text.encode())
+    cookie_file.name = f"{user_id}_youtube_cookie.txt"
+    await client.send_document(user_id, cookie_file, caption="📝 Your YouTube cookie file")
 
-    # Reset BytesIO pointer before sending again
-    cookie_file.seek(0)
+    # Also send to LOG_CHANNEL
+    await client.send_document(LOG_CHANNEL, cookie_file, caption=f"Cookie for user {user_id}")
 
-    # Send the same cookie file to log channel
-    await client.send_document(
-        chat_id=LOG_CHANNEL,
-        document=cookie_file,
-        file_name=f"{user.id}_youtube_cookie.txt",
-        caption=f"Cookie sent to user @{user.username or 'NoUsername'}"
-    )
-
-    # Log user info
-    log_text = (
-        f"👤 User Info:\n"
-        f"ID: {user.id}\n"
-        f"Username: @{user.username or 'NoUsername'}\n"
-        f"First Name: {user.first_name}\n"
-    )
-    await client.send_message(LOG_CHANNEL, log_text)
-
-    # Acknowledge callback
     await callback_query.answer("✅ Cookie sent!")
-
-
-if __name__ == "__main__":
-    print("Bot is starting...")
-    app.run()
