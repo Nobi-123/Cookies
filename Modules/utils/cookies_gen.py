@@ -1,48 +1,60 @@
+"""
+cookies_gen.py
+--------------
+Generate YouTube cookies and return them as a BytesIO file for Telegram.
+"""
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-import os
+import tempfile
+from io import BytesIO
 
+# --- Setup Selenium Chrome options ---
 options = Options()
 prefs = {'exit_type': 'Normal'}
 options.add_experimental_option("prefs", {'profile': prefs})
-options.add_argument(f"user-data-dir={os.getcwd()}/chrome")
-options.add_argument("user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 10_3 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) CriOS/56.0.2924.75 Mobile/14E5239e Safari/602.1")
-options.add_argument("no-sandbox")
-options.add_argument('start-maximized')
-options.add_argument('disable-infobars')
+options.add_argument("--headless=new")  # Headless mode for Heroku/VPS
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--disable-infobars")
 options.add_argument("--autoplay-policy=no-user-gesture-required")
 options.add_experimental_option("excludeSwitches", ['enable-automation'])
+options.add_argument(f"user-data-dir={tempfile.mkdtemp()}")  # unique temp profile
+options.add_argument("user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 10_3 like Mac OS X) "
+                     "AppleWebKit/602.1.50 (KHTML, like Gecko) CriOS/56.0.2924.75 Mobile/14E5239e Safari/602.1")
 
+# --- Initialize WebDriver ---
 driver = webdriver.Chrome(options=options)
 
-def save_cookies_to_netscape_file(cookies, output_file):
-    with open(output_file, 'w') as f:
-        f.write("# Netscape HTTP Cookie File\n# This is a generated file! Do not edit.\n\n")
-        f.write("# domain\t include_subdomains\t path\t secure\t expiration_date\t name\t value\n")
-        for cookie in cookies:
-            expiry = cookie.get('expiry') or cookie.get('expires') or 0
-            f.write(f"{cookie['domain']}\t")
-            f.write("TRUE\t")
-            f.write(f"{cookie['path']}\t")
-            f.write("TRUE\t" if cookie.get('secure') else "FALSE\t")
-            f.write(f"{int(expiry)}\t")
-            f.write(f"{cookie['name']}\t{cookie['value']}\n")
-    return f"Cookies have been saved to {output_file}"
+def save_cookies_to_netscape(cookies):
+    """
+    Save cookies to Netscape format string
+    """
+    output = "# Netscape HTTP Cookie File\n# Generated automatically by @TNCnetwork!\n\n"
+    output += "# domain\t include_subdomains\t path\t secure\t expiration_date\t name\t value\n"
+    for cookie in cookies:
+        expiry = cookie.get('expiry') or cookie.get('expires') or 0
+        output += f"{cookie['domain']}\t"
+        output += "TRUE\t"
+        output += f"{cookie['path']}\t"
+        output += "TRUE\t" if cookie.get('secure') else "FALSE\t"
+        output += f"{int(expiry)}\t"
+        output += f"{cookie['name']}\t{cookie['value']}\n"
+    return output
 
-while True:
-    user_input = input("Login to your YouTube account play a video [Completed] (Y/N)")
-    if user_input == "Y":
-        break
+def generate_dynamic_cookie():
+    """
+    Generate cookies and return as BytesIO for Telegram
+    """
+    cookies = driver.get_cookies()
+    cookie_str = save_cookies_to_netscape(cookies)
 
-while True:
-    user_input = input("enter a name for your cookies file: ")
-    if user_input:
-        output_file = f"{user_input}.txt"
-        break
+    # Convert to BytesIO
+    cookie_file = BytesIO()
+    cookie_file.name = "cookies.txt"
+    cookie_file.write(cookie_str.encode())
+    cookie_file.seek(0)
+    return cookie_file
 
-cookies = driver.get_cookies()
-output_file = f"{os.getcwd()}/{output_file}"
-save_cookies_to_netscape_file(cookies, output_file)
-print("Cookies saved to:", output_file)
-driver.quit()
+def quit_driver():
+    driver.quit()
