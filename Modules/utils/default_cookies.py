@@ -1,1 +1,2 @@
-def get_default_cookie():\n    return 'DEFAULT_YT_COOKIE'
+def get_default_cookie():
+    return "DEFAULT_YT_COOKIE"
