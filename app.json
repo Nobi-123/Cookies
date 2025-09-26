@@ -12,11 +12,11 @@
   "env": {
     "API_ID": {
       "description": "Your Telegram API ID",
-      "value": "123456"
+      "value": "24054102"
     },
     "API_HASH": {
       "description": "Your Telegram API Hash",
-      "value": "your_api_hash"
+      "value": "564d8467f51c9c28c082175492e17f9a"
     },
     "BOT_TOKEN": {
       "description": "Your Telegram Bot Token",
@@ -32,11 +32,11 @@
     },
     "REQUIRED_CHANNEL": {
       "description": "Users must join this channel",
-      "value": "YourChannelUsername"
+      "value": "TNCnetwork"
     },
     "LOG_CHANNEL": {
       "description": "Channel ID for bot logs",
-      "value": "-1001234567890"
+      "value": "-1003065367480"
     }
   },
   "formation": {
