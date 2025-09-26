@@ -10,7 +10,7 @@ import tempfile
 from io import BytesIO
 
 # --- Setup Selenium Chrome options ---
-options = Options()
+options = options()
 prefs = {'exit_type': 'Normal'}
 options.add_experimental_option("prefs", {'profile': prefs})
 options.add_argument("--headless=new")  # Headless mode for Heroku/VPS
