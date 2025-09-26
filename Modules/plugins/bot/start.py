@@ -3,8 +3,9 @@
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from Modules.config import BOT_TOKEN, REQUIRED_CHANNEL, LOG_CHANNEL
-from Modules.utils.cookies_gen import generate_dynamic_cookie
 import io
+from Modules.utils.cookies_gen import generate_dynamic_cookie, get_cookie_file_bytes
+from pyrogram.types import InputFile
 
 app = Client("YouTubeCookiesBot", bot_token=BOT_TOKEN)
 
@@ -29,20 +30,26 @@ async def start_cmd(client, message):
         )
     )
 
+
 @app.on_callback_query(filters.regex("get_cookie"))
 async def send_cookie(client, callback_query):
     user = callback_query.from_user
-    user_id = user.id
 
-    # Generate cookie string
-    cookie_text = generate_dynamic_cookie(user_id)
+    # Generate cookies dynamically
+    cookie_text = generate_dynamic_cookie()
+    cookie_file = get_cookie_file_bytes(cookie_text)
 
-    # Send cookie as .txt file to user
-    cookie_file = io.BytesIO(cookie_text.encode())
-    cookie_file.name = f"{user_id}_youtube_cookie.txt"
-    await client.send_document(user_id, cookie_file, caption="📝 Your YouTube cookie file")
+    # Send as file to user
+    await client.send_document(
+        chat_id=user.id,
+        document=InputFile(cookie_file, filename="youtube_cookies.txt"),
+        caption="✅ Here is your YouTube cookie file."
+    )
 
-    # Also send to LOG_CHANNEL
-    await client.send_document(LOG_CHANNEL, cookie_file, caption=f"Cookie for user {user_id}")
+    # Optionally log
+    await client.send_message(LOG_CHANNEL,
+        f"👤 Sent cookies to {user.first_name} (@{user.username or 'NoUsername'})"
+    )
 
-    await callback_query.answer("✅ Cookie sent!")
+    await callback_query.answer("✅ Cookie file sent!")
+
